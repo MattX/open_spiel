@@ -73,6 +73,18 @@ inline constexpr int kPublicInfoTensorSize =
     kAuctionTensorSize  // The auction
     - kNumCards         // But not any player's cards
     + kNumPlayers;      // Plus trailing passes
+constexpr GetPlayTensorSize(int num_tricks) {
+  return kNumBidLevels              // What the contract is
+    + kNumDenominations        // What trumps are
+    + kNumOtherCalls           // Undoubled / doubled / redoubled
+    + kNumPlayers              // Who declarer is
+    + kNumVulnerabilities      // Vulnerability of the declaring side
+    + kNumCards                // Our remaining cards
+    + kNumCards                // Dummy's remaining cards
+    + num_tricks * kNumCards  // Cards played for all tricks
+    + kNumTricks               // Number of tricks we have won
+    + kNumTricks;              // Number of tricks they have won
+}
 inline constexpr int kPlayTensorSize =
     kNumBidLevels              // What the contract is
     + kNumDenominations        // What trumps are
@@ -209,6 +221,7 @@ class BridgeState : public State {
   mutable absl::optional<ddTableResults> double_dummy_results_{};
   std::array<bool, kNumContracts> possible_contracts_;
   mutable std::array<int, kNumContracts> score_by_contract_;
+  int num_tricks_;
 };
 
 class BridgeGame : public Game {
@@ -228,7 +241,7 @@ class BridgeGame : public Game {
   double MaxUtility() const override { return kMaxScore; }
   absl::optional<double> UtilitySum() const override { return 0; }
   std::vector<int> ObservationTensorShape() const override {
-    return {kObservationTensorSize};
+    return {GetObservationTensorSize(NumTricks())};
   }
   int MaxGameLength() const override {
     return UseDoubleDummyResult() ? kMaxAuctionLength
@@ -258,6 +271,9 @@ class BridgeGame : public Game {
   }
   bool IsNonDealerVulnerable() const {
     return ParameterValue<bool>("non_dealer_vul", false);
+  }
+  int NumTricks() const {
+    return ParameterValue<int>("num_tricks", 13);
   }
 };
 
